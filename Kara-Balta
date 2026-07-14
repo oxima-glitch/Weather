@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Погода в Кара-Балте</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    min-height:100vh;
+    background:linear-gradient(135deg,#1d3557,#457b9d,#74c0fc);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:white;
+}
+
+.container{
+    width:95%;
+    max-width:900px;
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(12px);
+    border-radius:20px;
+    padding:30px;
+    box-shadow:0 0 30px rgba(0,0,0,.3);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:25px;
+}
+
+.main{
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:20px;
+}
+
+.current{
+    flex:1;
+    min-width:250px;
+}
+
+.current h2{
+    font-size:60px;
+}
+
+.current p{
+    margin:8px 0;
+    font-size:20px;
+}
+
+.hourly{
+    flex:1;
+    min-width:250px;
+}
+
+.hour-card{
+    display:flex;
+    justify-content:space-between;
+    padding:10px;
+    border-bottom:1px solid rgba(255,255,255,.2);
+}
+
+.days{
+    margin-top:30px;
+}
+
+.day{
+    display:flex;
+    justify-content:space-between;
+    padding:12px;
+    margin-top:8px;
+    border-radius:10px;
+    background:rgba(255,255,255,.08);
+}
+
+footer{
+    margin-top:25px;
+    text-align:center;
+    opacity:.8;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h1>🌤 Погода в Кара-Балте</h1>
+
+<div class="main">
+
+<div class="current">
+
+<h2 id="temp">--°</h2>
+
+<p id="weather">Загрузка...</p>
+
+<p>🌡 Ощущается: <span id="feel">--</span>°C</p>
+
+<p>💧 Влажность: <span id="humidity">--</span>%</p>
+
+<p>💨 Ветер: <span id="wind">--</span> км/ч</p>
+
+<p>🌧 Осадки: <span id="rain">--</span>%</p>
+
+</div>
+
+<div class="hourly">
+
+<h3>Почасовой прогноз</h3>
+
+<div id="hours"></div>
+
+</div>
+
+</div>
+
+<div class="days">
+
+<h3 style="margin-bottom:10px;">Прогноз на 7 дней</h3>
+
+<div id="week"></div>
+
+</div>
+
+<footer>
+
+Данные: Open-Meteo
+
+</footer>
+
+</div>
+
+<script>
+
+const latitude = 42.814;
+const longitude = 73.848;
+
+const weatherCode={
+0:"☀ Ясно",
+1:"🌤 Небольшая облачность",
+2:"⛅ Переменная облачность",
+3:"☁ Пасмурно",
+45:"🌫 Туман",
+48:"🌫 Туман",
+51:"🌦 Морось",
+53:"🌦 Морось",
+55:"🌦 Морось",
+61:"🌧 Дождь",
+63:"🌧 Дождь",
+65:"🌧 Сильный дождь",
+71:"❄ Снег",
+73:"❄ Снег",
+75:"❄ Сильный снег",
+80:"🌦 Ливень",
+81:"🌦 Ливень",
+82:"⛈ Сильный ливень",
+95:"⛈ Гроза"
+};
+
+async function loadWeather(){
+
+const url=`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=Asia/Bishkek`;
+
+const response=await fetch(url);
+
+const data=await response.json();
+
+document.getElementById("temp").innerHTML=
+Math.round(data.current.temperature_2m)+"°C";
+
+document.getElementById("weather").innerHTML=
+weatherCode[data.current.weather_code] || "Неизвестно";
+
+document.getElementById("feel").innerHTML=
+Math.round(data.current.apparent_temperature);
+
+document.getElementById("humidity").innerHTML=
+data.current.relative_humidity_2m;
+
+document.getElementById("wind").innerHTML=
+Math.round(data.current.wind_speed_10m);
+
+const hour=new Date().getHours();
+
+document.getElementById("rain").innerHTML=
+data.hourly.precipitation_probability[hour];
+
+let hours="";
+
+for(let i=0;i<12;i++){
+
+const index=hour+i;
+
+const time=data.hourly.time[index].split("T")[1];
+
+hours+=`
+<div class="hour-card">
+<div>${time}</div>
+<div>${Math.round(data.hourly.temperature_2m[index])}°C</div>
+<div>${data.hourly.precipitation_probability[index]}%</div>
+</div>
+`;
+
+}
+
+document.getElementById("hours").innerHTML=hours;
+
+const week=document.getElementById("week");
+
+const days=["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
+
+let html="";
+
+for(let i=0;i<7;i++){
+
+const d=new Date(data.daily.time[i]);
+
+html+=`
+<div class="day">
+<div>${days[d.getDay()]}</div>
+<div>${weatherCode[data.daily.weather_code[i]]}</div>
+<div>${Math.round(data.daily.temperature_2m_max[i])}° /
+${Math.round(data.daily.temperature_2m_min[i])}°</div>
+</div>
+`;
+
+}
+
+week.innerHTML=html;
+
+}
+
+loadWeather();
+
+setInterval(loadWeather,600000);
+
+</script>
+
+</body>
+</html>
